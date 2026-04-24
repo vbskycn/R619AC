@@ -244,11 +244,11 @@ jobs:
         id: organize
         if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
         run: |
-          cd $GITHUB_WORKSPACE/openwrt/bin/packages
-
-          tar -zcvf Packages.tar.gz ./*
-
-          cp Packages.tar.gz $GITHUB_WORKSPACE/openwrt/bin/targets/*/*
+          if [ -d "$GITHUB_WORKSPACE/openwrt/bin/packages" ]; then
+            cd $GITHUB_WORKSPACE/openwrt/bin/packages
+            tar -zcvf Packages.tar.gz ./* || true
+            cp Packages.tar.gz $GITHUB_WORKSPACE/openwrt/bin/targets/*/*/ || true
+          fi
 
           cd $GITHUB_WORKSPACE/openwrt/bin/targets/*/*
 
