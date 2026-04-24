@@ -134,7 +134,9 @@ jobs:
 
       - name: File Patch Before
         run: |
-          cp -f patch/rc.local openwrt/package/base-files/files/etc/rc.local
+          if [ -f "patch/rc.local" ]; then
+            cp -f patch/rc.local openwrt/package/base-files/files/etc/rc.local
+          fi
 
           cd openwrt
 
@@ -241,6 +243,11 @@ jobs:
             cd $GITHUB_WORKSPACE/openwrt/bin/packages
             tar -zcvf Packages.tar.gz ./* || true
             cp Packages.tar.gz $GITHUB_WORKSPACE/openwrt/bin/targets/*/*/ || true
+          fi
+
+          if [ ! -d "$GITHUB_WORKSPACE/openwrt/bin/targets" ]; then
+            echo "Targets directory does not exist. Build likely failed early."
+            exit 1
           fi
 
           cd $GITHUB_WORKSPACE/openwrt/bin/targets/*/*
