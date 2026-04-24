@@ -1,14 +1,5 @@
-#
-# Copyright (c) 2019-2020 P3TERX <https://p3terx.com>
-#
-# This is free software, licensed under the MIT License.
-# See /LICENSE for more information.
-#
-# https://github.com/P3TERX/Actions-OpenWrt
-# Description: Build OpenWrt using GitHub Actions
-#
-
 name: Build R619AC-IMM24.10.2-IM
+
 on:
   repository_dispatch:
   workflow_dispatch:
@@ -19,6 +10,11 @@ on:
         default: 'false'
   watch:
     types: [started]
+
+permissions:
+  contents: write
+  actions: read
+
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
   REPO_BRANCH: openwrt-24.10
@@ -28,34 +24,75 @@ env:
   DIY_P2_SH: 24.10.2diy-2.sh
   UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
-  UPLOAD_COWTRANSFER: false
-  UPLOAD_WETRANSFER: true
   UPLOAD_RELEASE: true
-  TZ: Asia/Ho_Chi_Minh
-  GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-  # custom_99: 99-network-custom.sh
+  TZ: Asia/Shanghai
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout
-        uses: actions/checkout@main
+        uses: actions/checkout@v4
 
       - name: Initialization environment
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo rm -rf /etc/apt/sources.list.d/* \
+            /usr/share/dotnet \
+            /usr/local/lib/android \
+            /opt/ghc
+
           sudo -E apt-get -qq update
-          sudo -E apt-get -qq install $(curl -fsSL git.io/depends-ubuntu-2004)
-          sudo -E apt-get -y install build-essential asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs git-core gcc-multilib p7zip p7zip-full msmtp libssl-dev texinfo libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint device-tree-compiler
-          sudo -E apt-get -qq install -y build-essential cmake asciidoc binutils bzip2 gawk gettext git libncurses5-dev libz-dev patch unzip zlib1g-dev lib32gcc1 libc6-dev-i386 subversion flex uglifyjs git-core gcc-multilib g++-multilib p7zip p7zip-full msmtp libssl-dev texinfo libreadline-dev libglib2.0-dev xmlto qemu-utils upx libelf-dev autoconf automake libtool autopoint ccache curl wget vim nano python2.7 python3 python3-pip python3-ply haveged lrzsz device-tree-compiler scons antlr3 gperf intltool mkisofs rsync ecj fastjar file g++ java-propose-classpath libncursesw5-dev python python3-distutils python3-setuptools swig time xsltproc
-        
+
+          sudo -E apt-get -qq install -y \
+            build-essential \
+            clang \
+            flex \
+            bison \
+            g++ \
+            gawk \
+            gcc-multilib \
+            g++-multilib \
+            gettext \
+            git \
+            libncurses5-dev \
+            libssl-dev \
+            python3 \
+            python3-distutils \
+            python3-pip \
+            python3-ply \
+            python3-setuptools \
+            rsync \
+            unzip \
+            zlib1g-dev \
+            file \
+            wget \
+            curl \
+            swig \
+            time \
+            xsltproc \
+            libelf-dev \
+            libglib2.0-dev \
+            libgmp3-dev \
+            libltdl-dev \
+            libmpc-dev \
+            libmpfr-dev \
+            libreadline-dev \
+            libz-dev \
+            zstd \
+            qemu-utils \
+            upx-ucl \
+            ccache \
+            device-tree-compiler \
+            python2
+
           sudo -E apt-get -qq autoremove --purge
           sudo -E apt-get -qq clean
           sudo timedatectl set-timezone "$TZ"
+
           sudo mkdir -p /workdir
           sudo chown $USER:$GROUPS /workdir
 
@@ -63,39 +100,50 @@ jobs:
         working-directory: /workdir
         run: |
           df -hT $PWD
-          git clone $REPO_URL -b $REPO_BRANCH openwrt
+          git clone --depth=1 $REPO_URL -b $REPO_BRANCH openwrt
           ln -sf /workdir/openwrt $GITHUB_WORKSPACE/openwrt
 
       - name: Load custom feeds
         run: |
-          [ -e $FEEDS_CONF ] && mv $FEEDS_CONF openwrt/feeds.conf.default
-          chmod +x $DIY_P1_SH && sed -i -e 's/\r$//' $GITHUB_WORKSPACE/$DIY_P1_SH
-          # mkdir -p openwrt/files/etc/uci-defaults
-          # mv $custom_99 openwrt/files/etc/uci-defaults/99-custom
+          if [ -e "$FEEDS_CONF" ]; then
+            mv "$FEEDS_CONF" openwrt/feeds.conf.default
+          fi
+
+          chmod +x "$DIY_P1_SH"
+          sed -i -e 's/\r$//' "$GITHUB_WORKSPACE/$DIY_P1_SH"
+
           cd openwrt
-          $GITHUB_WORKSPACE/$DIY_P1_SH
-          #git fetch origin --tags
-          #git describe --tags $(git rev-list --tags --max-count=1) > immortalwrt_version
-          #git checkout -f $(git describe --tags $(git rev-list --tags --max-count=1))
+          "$GITHUB_WORKSPACE/$DIY_P1_SH"
 
       - name: Update feeds
-        run: cd openwrt && ./scripts/feeds update -a
+        run: |
+          cd openwrt
+          ./scripts/feeds update -a
 
       - name: Install feeds
-        run: cd openwrt && ./scripts/feeds install -a
+        run: |
+          cd openwrt
+          ./scripts/feeds install -a
 
       - name: Load custom configuration
         run: |
-          [ -e files ] && mv files openwrt/files
-          [ -e $CONFIG_FILE ] && mv $CONFIG_FILE openwrt/.config
-          #sed -i 's/CONFIG_VERSION_NUMBER\s*=.*/CONFIG_VERSION_NUMBER=$immortalwrt_version/g' openwrt/.config
-          chmod +x $DIY_P2_SH && sed -i -e 's/\r$//' $GITHUB_WORKSPACE/$DIY_P2_SH
+          if [ -e files ]; then
+            mv files openwrt/files
+          fi
+
+          if [ -e "$CONFIG_FILE" ]; then
+            mv "$CONFIG_FILE" openwrt/.config
+          fi
+
+          chmod +x "$DIY_P2_SH"
+          sed -i -e 's/\r$//' "$GITHUB_WORKSPACE/$DIY_P2_SH"
+
           cd openwrt
-          $GITHUB_WORKSPACE/$DIY_P2_SH
+          "$GITHUB_WORKSPACE/$DIY_P2_SH"
 
       - name: SSH connection to Actions
         uses: P3TERX/ssh2actions@v1.0.0
-        if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh  != 'false') || contains(github.event.action, 'ssh')
+        if: (github.event.inputs.ssh == 'true' && github.event.inputs.ssh != 'false') || contains(github.event.action, 'ssh')
         env:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -105,7 +153,8 @@ jobs:
         run: |
           cd openwrt
           make defconfig
-          make download -j $(($(nproc)+1))
+          make download -j$(($(nproc)+1))
+
           find dl -size -1024c -exec ls -l {} \;
           find dl -size -1024c -exec rm -f {} \;
 
@@ -113,27 +162,41 @@ jobs:
         id: compile
         run: |
           cd openwrt
-          echo -e "$(nproc) thread compile"
-          make -j $(($(nproc)+1)) || make -j4 || make -j4 V=s
-          echo "::set-output name=status::success"
+
+          echo "$(nproc) thread compile"
+
+          make -j$(($(nproc)+1)) || make -j4 || make -j1 V=s
+
+          echo "status=success" >> $GITHUB_OUTPUT
+
           grep '^CONFIG_TARGET.*DEVICE.*=y' .config | sed -r 's/.*DEVICE_(.*)=y/\1/' > DEVICE_NAME
-          [ -s DEVICE_NAME ] && echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+
+          if [ -s DEVICE_NAME ]; then
+            echo "DEVICE_NAME=_$(cat DEVICE_NAME)" >> $GITHUB_ENV
+          fi
+
           echo "FILE_DATE=_$(date +"%Y%m%d%H%M")" >> $GITHUB_ENV
 
       - name: If Error
         if: steps.compile.outcome == 'failure'
         run: |
-          curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=Firmware ${{ env.FILE_NAME }} failed to compile."
+          if [ -n "${{ secrets.TELEGRAM_BOT_TOKEN }}" ] && [ -n "${{ secrets.TELEGRAM_CHAT_ID }}" ]; then
+            curl "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+              -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}&text=Firmware compile failed."
+          fi
+
           cat openwrt/.config
           echo '================================================================'
-          cd openwrt && make -j $(($(nproc)+1)) V=s
+
+          cd openwrt
+          make -j1 V=s
 
       - name: Check space usage
-        if: (!cancelled())
+        if: always()
         run: df -hT
 
       - name: Upload bin directory
-        uses: actions/upload-artifact@main
+        uses: actions/upload-artifact@v4
         if: steps.compile.outputs.status == 'success' && env.UPLOAD_BIN_DIR == 'true'
         with:
           name: OpenWrt_bin${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
@@ -145,27 +208,29 @@ jobs:
         run: |
           cd openwrt/bin/targets/*/*
           rm -rf packages
+
           echo "FIRMWARE=$PWD" >> $GITHUB_ENV
-          echo "::set-output name=status::success"
+          echo "status=success" >> $GITHUB_OUTPUT
 
       - name: Upload firmware directory
-        uses: actions/upload-artifact@main
+        uses: actions/upload-artifact@v4
         if: steps.organize.outputs.status == 'success' && !cancelled()
         with:
-          name: IMM23.05-${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
+          name: IMM24.10.2-${{ env.DEVICE_NAME }}${{ env.FILE_DATE }}
           path: ${{ env.FIRMWARE }}
 
       - name: Generate release tag
         id: tag
         if: env.UPLOAD_RELEASE == 'true' && !cancelled()
         run: |
-          touch release.txt
-          echo "R619AC-IMM23.05-1" >> release.txt
-          echo "::set-output name=release_tag::$(date +"%Y.%m.%d")"
-          echo "::set-output name=status::success"
+          echo "R619AC-IMM24.10.2-IM" > release.txt
+          echo "Build time: $(date +"%Y-%m-%d %H:%M:%S")" >> release.txt
+
+          echo "release_tag=R619AC-IMM24.10.2-$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
+          echo "status=success" >> $GITHUB_OUTPUT
 
       - name: Upload firmware to release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         if: steps.tag.outputs.status == 'success' && !cancelled()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -175,7 +240,7 @@ jobs:
           files: ${{ env.FIRMWARE }}/*
 
       - name: Remove old Releases
-        uses: dev-drprasad/delete-older-releases@v0.1.0
+        uses: dev-drprasad/delete-older-releases@v0.3.4
         if: env.UPLOAD_RELEASE == 'true' && !cancelled()
         with:
           keep_latest: 3
