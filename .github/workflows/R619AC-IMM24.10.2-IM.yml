@@ -225,8 +225,16 @@ jobs:
         id: tag
         if: env.UPLOAD_RELEASE == 'true' && !cancelled()
         run: |
-          echo "R619AC-IMM24.10.2-IM" > release.txt
-          echo "Build time: $(date +"%Y-%m-%d %H:%M:%S")" >> release.txt
+          echo "## R619AC ImmortalWrt 24.10.2 稳定版固件" > release.txt
+          echo "🕒 **构建时间**: $(date +"%Y-%m-%d %H:%M:%S")" >> release.txt
+          echo "" >> release.txt
+          echo "### 🏮 固件说明及默认配置" >> release.txt
+          echo "- **后台地址**: 192.168.88.1" >> release.txt
+          echo "- **管理账号**: root" >> release.txt
+          echo "- **管理密码**: (无密码，初次登录直接进入)" >> release.txt
+          echo "- **Wi-Fi 名称**: ImmortalWrt 或 OpenWrt" >> release.txt
+          echo "- **Wi-Fi 密码**: (默认无密码)" >> release.txt
+          echo "- **底层源码**: 基于 [ImmortalWrt 24.10.2 分支](https://github.com/immortalwrt/immortalwrt)" >> release.txt
 
           echo "release_tag=R619AC-IMM24.10.2-$(date +"%Y.%m.%d-%H%M")" >> $GITHUB_OUTPUT
           echo "status=success" >> $GITHUB_OUTPUT

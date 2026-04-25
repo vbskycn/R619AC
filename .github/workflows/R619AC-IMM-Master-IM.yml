@@ -232,7 +232,7 @@ jobs:
           echo "📅 **自动发布**: 每月 28 日自动构建更新" >> release.txt
           echo "" >> release.txt
           echo "### 🏮 固件说明及默认配置" >> release.txt
-          echo "- **后台地址**: 192.168.3.3" >> release.txt
+          echo "- **后台地址**: 192.168.88.1" >> release.txt
           echo "- **管理账号**: root" >> release.txt
           echo "- **管理密码**: (无密码，初次登录直接进入)" >> release.txt
           echo "- **Wi-Fi 名称**: ImmortalWrt 或 OpenWrt" >> release.txt
