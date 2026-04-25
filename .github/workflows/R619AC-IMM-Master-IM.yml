@@ -8,8 +8,6 @@ on:
         description: 'Debugging with tmate'
         required: false
         default: 'false'
-  watch:
-    types: [started]
 
 permissions:
   contents: write
