@@ -8,8 +8,6 @@ on:
         description: 'Debugging with tmate'
         required: false
         default: 'false'
-  schedule:
-    - cron: 0 0 28 * *
   watch:
     types: [started]
 
